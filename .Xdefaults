@@ -1,0 +1,72 @@
+#Xft.dpi:        96
+#Xft.antialias:  true
+#Xft.rgba:       rgb
+#Xft.hinting:    true
+#Xft.hintstyle:  hintslight
+
+#
+URxvt*font: xft:Monospace:pixelsize=14.5:style=light
+URxvt*boldFont: xft:Monospace:pixelsize=14.5:style=light
+#URxvt*font: xft:DejavuSansMono:pixelsize=14
+#URxvt*font: xft:Monospace:pixelsize=12:style=medium:antialias=true
+
+
+
+URxvt*loginShell:true
+URxvt*transparent:true
+URxvt*shading:70
+URxvt*saveLines:0
+URxvt*foreground:grey
+URxvt*background:black
+#URxvt*font: xft:Droid Sans Mono:style=medium:size=9
+URxvt*scrollBar:false
+URxvt*termName:rxvt-unicode
+URxvt*letterSpace: -1
+
+#000000000000:#AAAA00000000:#0000AAAA0000:#AAAA55550000:#00000000AAAA:#AAAA0000AAAA:#0000AAAAAAAA:#AAAAAAAAAAAA:#555555555555:#FFFF55555555:#5555FFFF5555:#FFFFFFFF5555:#55555555FFFF:#FFFF5555FFFF:#5555FFFFFFFF:#FFFFFFFFFFFF
+
+! black
+#URxvt*color0  : #2E3436
+URxvt*color0 : #000000000000
+#URxvt*color8  : #555753
+URxvt*color8 : #555555555555
+! red
+#URxvt*color1  : #CC0000
+URxvt*color1 : #AAAA00000000
+#URxvt*color9  : #EF2929
+URxvt*color9 : #FFFF55555555
+! green
+URxvt*color2 : #0000AAAA0000
+#URxvt*color2  : #4E9A06
+URxvt*color10 : #5555FFFF5555
+#URxvt*color10 : #8AE234
+! yellow
+#URxvt*color3  : #C4A000
+URxvt*color3 : #AAAA55550000
+#URxvt*color11 : #FCE94F
+URxvt*color11 : #FFFFFFFF5555
+! blue
+#URxvt*color4  : #3465A4
+URxvt*color4 : #00000000AAAA
+#URxvt*color12 : #729FCF
+URxvt*color12 : #55555555FFFF
+! magenta
+#URxvt*color5  : #75507B
+URxvt*color5 : #AAAA0000AAAA
+#URxvt*color13 : #AD7FA8
+URxvt*color13 : #FFFF5555FFFF
+! cyan
+#URxvt*color6  : #06989A
+URxvt*color6 : #0000AAAAAAAA
+#URxvt*color14 : #34E2E2
+URxvt*color14 : #5555FFFFFFFF
+! white
+#URxvt*color7  : #D3D7CF
+URxvt*color7 : #AAAAAAAAAAAA
+#URxvt*color15 : #EEEEEC
+URxvt*color15 : #FFFFFFFFFFFF
+
+URxvt*perl-ext-common: default,matcher
+URxvt*urlLauncher: firefox
+URxvt*matcher.button: 1
+URxvt*colorUL: #86a2be
