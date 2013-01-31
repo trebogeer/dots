@@ -14,7 +14,7 @@ URxvt*boldFont: xft:Monospace:pixelsize=14.5:style=light
 
 URxvt*loginShell:true
 URxvt*transparent:true
-URxvt*shading:70
+URxvt*shading:40
 URxvt*saveLines:0
 URxvt*foreground:grey
 URxvt*background:black
