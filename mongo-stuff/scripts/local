@@ -1,0 +1,26 @@
+#!/bin/bash
+
+## MongoDB
+## localhost:10000 => mongod
+
+#MONGOHOME=~/tokumx-1.4.0-linux-x86_64
+MONGOHOME=~/tokumx-1.4.1-rc.4-linux-x86_64
+#MONGOHOME=~/mongodb-linux-x86_64-2.4.4
+#TMP=~/mdata
+TMP=~/tmdata
+
+#OTHER_OPTS="--smallfiles --fork --rest"
+#OTHER_OPTS="--fork --rest"
+OTHER_OPTS="--fork --rest --cacheSize=20G --expireOplogHours=1"
+
+mkdir -p $TMP/log
+mkdir -p $TMP/config
+mkdir -p $TMP/data
+
+## shards
+$MONGOHOME/bin/mongod --port 10000 --dbpath $TMP/data --logpath $TMP/log/mongod.log $OTHER_OPTS;
+
+ps axu |grep [m]ongo
+
+echo ""
+echo "==== Setting is done ===="
