@@ -66,6 +66,8 @@ URxvt*color7 : #AAAAAAAAAAAA
 #URxvt*color15 : #EEEEEC
 URxvt*color15 : #FFFFFFFFFFFF
 
+URxvt.perl-lib: /home/dimav/.urxvt/perl/
+
 #URxvt*perl-ext-common: default,matcher,clipboard
 URxvt*perl-ext-common: default,matcher,clipboard,keyboard-select
 URxvt.keysym.M-Escape: perl:keyboard-select:activate
