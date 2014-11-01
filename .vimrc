@@ -13,6 +13,8 @@ Plugin 'tpope/vim-fugitive'
 Plugin 'Valloric/YouCompleteMe'
 Plugin 'fatih/vim-go' 
 Plugin 'kien/ctrlp.vim'
+Plugin 'bling/vim-airline'
+Plugin 'majutsushi/tagbar'
 " The following are examples of different formats supported.
 " Keep Plugin commands between vundle#begin/end.
 " plugin on GitHub repo
@@ -82,4 +84,24 @@ set synmaxcol=128
 set re=1
 
 set statusline=%<%f\ %h%m%r%{fugitive#statusline()}%=%-14.(%l,%c%V%)\ %P
+
+" ==================== Vim-go ====================
+let g:go_fmt_fail_silently = 1
+let g:go_fmt_command = "gofmt"
+"
+"
+au FileType go nmap gd <Plug>(go-def)
+au FileType go nmap <Leader>s <Plug>(go-def-split)
+au FileType go nmap <Leader>v <Plug>(go-def-vertical)
+au FileType go nmap <Leader>t <Plug>(go-def-tab)
+"
+au FileType go nmap <Leader>i <Plug>(go-info)
+"
+au FileType go nmap  <leader>r  <Plug>(go-run)
+au FileType go nmap  <leader>b  <Plug>(go-build)
+"
+au FileType go nmap <Leader>d <Plug>(go-doc)
+
+" =================== tagbar ====================
+nmap <F8> :TagbarToggle<CR>
 
