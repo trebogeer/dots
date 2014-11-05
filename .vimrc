@@ -86,6 +86,9 @@ set re=1
 
 set statusline=%<%f\ %h%m%r%{fugitive#statusline()}%=%-14.(%l,%c%V%)\ %P
 
+" youcompleteme colors
+highlight Pmenu ctermfg=8 ctermbg=103 guifg=#ffffff guibg=#0000ff
+
 " ==================== Vim-go ====================
 let g:go_fmt_fail_silently = 1
 let g:go_fmt_command = "gofmt"
@@ -105,4 +108,5 @@ au FileType go nmap <Leader>d <Plug>(go-doc)
 
 " =================== tagbar ====================
 nmap <F8> :TagbarToggle<CR>
-
+" =================== nerdtree ==================
+map <C-n> :NERDTreeToggle<CR>
