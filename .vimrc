@@ -1,6 +1,9 @@
 set nocompatible              " be iMproved, required
 filetype off                  " required
 
+" cql synax
+autocmd BufRead *.cql set syntax=cql
+
 " set the runtime path to include Vundle and initialize
 set rtp+=~/.vim/bundle/Vundle.vim
 call vundle#begin()
@@ -16,6 +19,7 @@ Plugin 'kien/ctrlp.vim'
 Plugin 'bling/vim-airline'
 Plugin 'majutsushi/tagbar'
 Plugin 'scrooloose/nerdtree'
+Plugin 'mileszs/ack.vim'
 " The following are examples of different formats supported.
 " Keep Plugin commands between vundle#begin/end.
 " plugin on GitHub repo
@@ -108,5 +112,7 @@ au FileType go nmap <Leader>d <Plug>(go-doc)
 
 " =================== tagbar ====================
 nmap <F8> :TagbarToggle<CR>
+nmap <C-b> :TagbarToggle<CR>
 " =================== nerdtree ==================
-map <C-n> :NERDTreeToggle<CR>
+nmap <C-n> :NERDTreeToggle<CR>
+
