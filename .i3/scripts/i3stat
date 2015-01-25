@@ -1,0 +1,25 @@
+#!/bin/bash
+
+#exec i3status &
+
+NMON=$(xrandr -d :0 -q | grep ' connected' | wc -l)
+
+#echo $NMON
+if [ "$NMON" = "2" ]; then
+  $HOME/.i3/scripts/dblmon
+fi
+
+#eval `cat $HOME/.fehbg`
+exec feh --bg-scale $HOME/.i3/ak47-181456.png &
+
+#sleep 1
+
+exec i3status -c $HOME/.i3/i3status.conf
+
+#i3-msg restart &
+
+#do
+#    read line
+#    LG=$(setxkbmap -print | grep xkb_symbols | awk -F"+" '{print $2}')
+#    echo "LG: $LG | $line" || exit 1
+#done

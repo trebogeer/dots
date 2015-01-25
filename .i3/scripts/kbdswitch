@@ -1,0 +1,36 @@
+#!/bin/bash
+
+
+
+#bindsym $alt+Shift+1 exec setxkbmap us
+#bindcode $alt+Shift+10 exec setxkbmap us
+#bindsym $alt+Shift+2 exec setxkbmap ru
+#bindcode $alt+Shift+11 exec setxbmap ru
+#bindsym $alt+Shift+3 exec setxkbmap dvorak
+#bindcode $alt+Shift+12 exec setxbmap dvorak
+
+
+
+cur_kbm=`setxkbmap -print | grep xkb_symbols | awk -F"+" '{print $2}'`
+#echo $cur_kbm
+
+case "$cur_kbm" in
+  us\(dvorak\))
+        kbm=$([ -z "$1" ] && echo "us" || echo "ru")
+        ;;
+  ru)
+        kbm=$([ -z "$1" ] && echo "dvorak" || echo "us")
+        ;;
+  us)
+        kbm=$([ -z "$1" ] && echo "ru" || echo "dvorak")
+        ;;
+   *) 
+        ;;
+esac
+#echo $kbm
+setxkbmap $kbm 
+killall -s USR1 i3status
+#killall -s USR1 i3status
+cur_kbm=`setxkbmap -print | grep xkb_symbols | awk -F"+" '{print $2}'`
+#echo $cur_kbm
+#exit 1

@@ -1,0 +1,9 @@
+#!/bin/sh
+
+INT="LVDS-1"
+EXT="HDMI-1"
+
+
+xrandr --output $EXT --primary
+xrandr --output $EXT --auto --pos 0x0 --output $INT --auto --right-of $EXT
+
