@@ -1,6 +1,9 @@
 set nocompatible              " be iMproved, required
 filetype off                  " required
 
+" cql synax
+autocmd BufRead *.cql set syntax=cql
+
 " set the runtime path to include Vundle and initialize
 set rtp+=~/.vim/bundle/Vundle.vim
 call vundle#begin()
@@ -16,6 +19,7 @@ Plugin 'kien/ctrlp.vim'
 Plugin 'bling/vim-airline'
 Plugin 'majutsushi/tagbar'
 Plugin 'scrooloose/nerdtree'
+Plugin 'mileszs/ack.vim'
 " The following are examples of different formats supported.
 " Keep Plugin commands between vundle#begin/end.
 " plugin on GitHub repo
@@ -86,6 +90,9 @@ set re=1
 
 set statusline=%<%f\ %h%m%r%{fugitive#statusline()}%=%-14.(%l,%c%V%)\ %P
 
+" youcompleteme colors
+highlight Pmenu ctermfg=8 ctermbg=103 guifg=#ffffff guibg=#0000ff
+
 " ==================== Vim-go ====================
 let g:go_fmt_fail_silently = 1
 let g:go_fmt_command = "gofmt"
@@ -105,4 +112,7 @@ au FileType go nmap <Leader>d <Plug>(go-doc)
 
 " =================== tagbar ====================
 nmap <F8> :TagbarToggle<CR>
+nmap <C-b> :TagbarToggle<CR>
+" =================== nerdtree ==================
+nmap <C-n> :NERDTreeToggle<CR>
 
