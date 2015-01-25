@@ -2,6 +2,7 @@
 sudo su
 apt-get install --no-install-recommends xorg
 apt-get install --no-install-recommends i3
+apt-get install --no-install-recommends i3status
 #apt-get install --no-install-recommends nvidia-331
 apt-get install --no-install-recommends rxvt-unicode
 apt-get install --no-install-recommends vim
@@ -11,3 +12,4 @@ apt-get install --no-install-recommends chromium-browser
 #apt-get install --no-install-recommends firefox
 apt-get install --no-install-recommends xsel
 apt-get install --no-install-recommends git
+git clone https://github.com/gmarik/Vundle.git ~/.vim/bundle/Vundle.vim
