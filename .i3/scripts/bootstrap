@@ -3,6 +3,7 @@ sudo su
 apt-get install --no-install-recommends xorg
 apt-get install --no-install-recommends i3
 apt-get install --no-install-recommends i3status
+apt-get install --no-install-recommends i3lock
 #apt-get install --no-install-recommends nvidia-331
 apt-get install --no-install-recommends rxvt-unicode
 apt-get install --no-install-recommends vim
