@@ -1,0 +1,223 @@
+#!/bin/bash
+
+set -e
+
+# ============================================================
+# Minimal Ubuntu Server + i3
+#
+# This script INSTALLS packages only.
+# It does NOT create or modify your i3 configuration.
+# ============================================================
+
+if [ "$EUID" -ne 0 ]; then
+    echo
+    echo "Run this script with:"
+    echo
+    echo "    sudo $0"
+    echo
+    exit 1
+fi
+
+# ------------------------------------------------------------
+# Determine normal user
+# ------------------------------------------------------------
+
+REAL_USER="${SUDO_USER:-}"
+
+if [ -z "$REAL_USER" ] || [ "$REAL_USER" = "root" ]; then
+    REAL_USER=$(awk -F: '$3 >= 1000 && $3 < 60000 {print $1; exit}' /etc/passwd)
+fi
+
+if [ -z "$REAL_USER" ]; then
+    echo "ERROR: Could not determine normal user."
+    exit 1
+fi
+
+REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
+
+echo
+echo "============================================================"
+echo " Minimal Ubuntu + i3 installation"
+echo "============================================================"
+echo
+echo "User: $REAL_USER"
+echo "Home: $REAL_HOME"
+echo
+
+# ------------------------------------------------------------
+# Update package lists
+# ------------------------------------------------------------
+
+echo "==> Updating package lists..."
+
+apt-get update
+
+# ------------------------------------------------------------
+# Xorg
+# ------------------------------------------------------------
+
+echo
+echo "==> Installing Xorg..."
+
+apt-get install -y --no-install-recommends \
+    xorg \
+    xinit
+
+# ------------------------------------------------------------
+# i3
+# ------------------------------------------------------------
+
+echo
+echo "==> Installing i3..."
+
+apt-get install -y --no-install-recommends \
+    i3 \
+    i3status \
+    i3lock
+
+# ------------------------------------------------------------
+# urxvt
+# ------------------------------------------------------------
+
+echo
+echo "==> Installing urxvt..."
+
+apt-get install -y --no-install-recommends \
+    rxvt-unicode
+
+# ------------------------------------------------------------
+# Utilities
+# ------------------------------------------------------------
+
+echo
+echo "==> Installing utilities..."
+
+apt-get install -y --no-install-recommends \
+    vim \
+    git \
+    xsel \
+    xclip \
+    xautolock \
+    feh \
+    curl \
+    wget \
+    ca-certificates
+
+# ------------------------------------------------------------
+# NetworkManager
+# ------------------------------------------------------------
+
+echo
+echo "==> Installing NetworkManager..."
+
+apt-get install -y --no-install-recommends \
+    network-manager \
+    network-manager-gnome
+
+systemctl enable NetworkManager
+systemctl restart NetworkManager
+
+# ------------------------------------------------------------
+# LightDM
+# ------------------------------------------------------------
+
+echo
+echo "==> Installing LightDM..."
+
+apt-get install -y --no-install-recommends \
+    lightdm
+
+systemctl enable lightdm
+
+# ------------------------------------------------------------
+# Google Chrome
+# ------------------------------------------------------------
+
+echo
+echo "==> Installing Google Chrome..."
+
+CHROME_DEB="/tmp/google-chrome-stable_current_amd64.deb"
+
+wget \
+    -O "$CHROME_DEB" \
+    "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb"
+
+apt-get install -y "$CHROME_DEB"
+
+rm -f "$CHROME_DEB"
+
+# ------------------------------------------------------------
+# Vundle
+# ------------------------------------------------------------
+
+echo
+echo "==> Installing Vundle..."
+
+mkdir -p "$REAL_HOME/.vim/bundle"
+
+if [ ! -d "$REAL_HOME/.vim/bundle/Vundle.vim" ]; then
+
+    sudo -u "$REAL_USER" git clone \
+        https://github.com/VundleVim/Vundle.vim.git \
+        "$REAL_HOME/.vim/bundle/Vundle.vim"
+
+else
+
+    echo "Vundle already installed."
+
+fi
+
+# ------------------------------------------------------------
+# Enable graphical boot
+# ------------------------------------------------------------
+
+echo
+echo "==> Setting graphical target..."
+
+systemctl set-default graphical.target
+
+# ------------------------------------------------------------
+# DO NOT TOUCH USER CONFIGURATION
+# ------------------------------------------------------------
+
+echo
+echo "============================================================"
+echo " User configuration was NOT modified"
+echo "============================================================"
+echo
+echo "Existing i3 configuration was left untouched."
+echo
+echo "No files were created or modified in:"
+echo
+echo "    $REAL_HOME/.i3"
+echo "    $REAL_HOME/.config/i3"
+echo "    $REAL_HOME/.Xresources"
+echo "    $REAL_HOME/.xinitrc"
+echo
+echo "============================================================"
+echo
+echo " Installed:"
+echo
+echo "    Xorg"
+echo "    i3"
+echo "    i3status"
+echo "    i3lock"
+echo "    urxvt"
+echo "    Vim"
+echo "    Git"
+echo "    xsel / xclip"
+echo "    xautolock"
+echo "    feh"
+echo "    NetworkManager"
+echo "    nm-applet"
+echo "    LightDM"
+echo "    Google Chrome"
+echo "    Vundle"
+echo
+echo "============================================================"
+echo
+echo "Reboot with:"
+echo
+echo "    sudo reboot"
+echo
+echo "============================================================"
