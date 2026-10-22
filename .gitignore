@@ -1,0 +1,7 @@
+*.deb
+*.tar.gz
+*.zip
+.vim/bundle/
+.urxvt/
+*.swp
+.DS_Store
