@@ -1,4 +1,24 @@
 #!/bin/sh
 
-#xrandr --output VGA1 --off --output LVDS1 --auto
-xrandr --output HDMI-1 --off --output LVDS-1 --auto
+# Single-screen layout: internal panel only, all other outputs
+# off.  The panel is found through xrandr, so the same script
+# works on any laptop.
+
+INT=""
+FIRST=""
+
+for o in $(xrandr -q | awk '/ connected/{print $1}'); do
+    [ -n "$FIRST" ] || FIRST=$o
+    case $o in
+        eDP*|LVDS*) [ -n "$INT" ] || INT=$o ;;
+    esac
+done
+
+[ -n "$INT" ] || INT=$FIRST
+[ -n "$INT" ] || exit 1
+
+for o in $(xrandr -q | awk '/ connected/{print $1}'); do
+    [ "$o" = "$INT" ] || xrandr --output "$o" --off
+done
+
+xrandr --output "$INT" --primary --auto

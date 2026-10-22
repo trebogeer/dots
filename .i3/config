@@ -239,6 +239,12 @@ assign [class="Thunderbird"] 9
 #exec $mp3
 #exec skype
 # }}}
+
+# Re-apply the monitor layout when an output is connected or
+# disconnected (i3 re-broadcasts the RandR events as its "output"
+# IPC event).
+exec_always --no-startup-id ~/.i3/scripts/monitors
+
 #exec gnome-keyring-daemon --components keyring,ssh,pkcs11 &
 #exec gnome-screensaver &
 #exec nm-applet &

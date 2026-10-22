@@ -418,6 +418,19 @@ echo "    Vundle"
 echo
 echo "============================================================"
 echo
+echo "Next steps:"
+echo
+echo "  1. Install the dotfiles from the repo:"
+echo
+echo "         cp -r ~/dots/.i3 ~/dots/.config ~/dots/.Xdefaults ~/dots/.xinitrc ~/"
+echo
+echo "  2. Adapt them to this machine (interfaces, battery,"
+echo "     NetworkManager, bar tray):"
+echo
+echo "         sudo ~/.i3/scripts/machine_setup"
+echo
+echo "============================================================"
+echo
 echo "Reboot with:"
 echo
 echo "    sudo reboot"

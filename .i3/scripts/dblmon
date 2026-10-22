@@ -1,9 +1,27 @@
 #!/bin/sh
 
-INT="LVDS-1"
-EXT="HDMI-1"
+# Two-monitor layout: external monitor on the left (primary),
+# internal panel on the right.
+#
+# Output names differ per machine (LVDS-1/HDMI-1 on older
+# laptops, eDP-1/HDMI-1 or eDP-1/DP-1 on newer ones), so they are
+# read from xrandr instead of being hardcoded.  Called by
+# ~/.i3/scripts/i3stat when two outputs are connected.
 
+INT=""
+EXT=""
 
-xrandr --output $EXT --primary
-xrandr --output $EXT --auto --pos 0x0 --output $INT --auto --right-of $EXT
+for o in $(xrandr -q | awk '/ connected/{print $1}'); do
+    case $o in
+        eDP*|LVDS*) [ -n "$INT" ] || INT=$o ;;
+        *)          [ -n "$EXT" ] || EXT=$o ;;
+    esac
+done
 
+[ -n "$INT" ] || INT=$EXT
+[ -n "$EXT" ] || EXT=$INT
+
+[ -n "$INT" ] && [ "$INT" != "$EXT" ] || exit 1
+
+xrandr --output "$EXT" --primary --auto --pos 0x0 \
+       --output "$INT" --auto --right-of "$EXT"

@@ -42,6 +42,25 @@ setxkbmap -option 'grp:alt_shift_toggle,grp_led:scroll'
 xset r rate 260
 
 # ------------------------------------------------------------
+# Primary output
+#
+# i3bar docks the tray (tray_output primary) on the output that
+# is marked primary, and X does not mark one by itself.  Prefer
+# the internal panel, fall back to the first connected output.
+# ------------------------------------------------------------
+
+PRIMARY=$(xrandr -q | awk '
+    / connected/ {
+        if ($1 ~ /^(eDP|LVDS)/) { print $1; found = 1; exit }
+        if (first == "") first = $1
+    }
+    END { if (!found && first != "") print first }')
+
+if [ -n "$PRIMARY" ]; then
+    xrandr --output "$PRIMARY" --primary --auto
+fi
+
+# ------------------------------------------------------------
 # urxvtd
 #
 # The daemon owns the control socket at

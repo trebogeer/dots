@@ -1,0 +1,445 @@
+#!/bin/bash
+
+set -e
+
+# ============================================================
+# Machine setup
+#
+# bootstrap_new installs packages and deliberately leaves the
+# configuration alone.  This script is the second half: it reads
+# the hardware of this machine and rewrites the few settings
+# that cannot be shared between a desktop and a laptop.
+#
+#   ~/.i3/i3status.conf
+#       wired interface name ("ethernet <name>")
+#       wireless interface name and module (only with Wi-Fi)
+#       battery module (only with a battery)
+#
+#   ~/.config/i3/config
+#       nm-applet autostart and "tray_output primary" (only when
+#       NetworkManager is in use)
+#
+#   netplan
+#       "renderer: NetworkManager" drop-in so that
+#       NetworkManager owns the interfaces
+#
+# NetworkManager is what nm-applet talks to, and it is what
+# handles Wi-Fi.  A wired-only desktop is left on
+# systemd-networkd, because NetworkManager cannot show anything
+# useful there and the tray would only display "no connections".
+#
+# The script is idempotent: running it again re-detects and
+# re-applies.
+#
+# Usage:
+#
+#     sudo ~/.i3/scripts/machine_setup [options]
+#
+# Options:
+#
+#     --dry-run             print what would be done, change nothing
+#     --network-manager     use NetworkManager even without Wi-Fi
+#     --no-network-manager  never use NetworkManager
+#     --no-restart          do not restart i3 after changing files
+#
+# WARNING: switching the netplan renderer re-creates the network
+# interfaces.  Run this from the console, not over SSH.
+# ============================================================
+
+usage() {
+    echo
+    echo "Usage: sudo $0 [options]"
+    echo
+    echo "  --dry-run             print what would be done, change nothing"
+    echo "  --network-manager     use NetworkManager even without Wi-Fi"
+    echo "  --no-network-manager  never use NetworkManager"
+    echo "  --no-restart          do not restart i3 after changing files"
+    echo "  -h, --help            this text"
+    echo
+}
+
+DRY_RUN=0
+NM_MODE=auto
+RESTART=1
+
+for arg in "$@"; do
+
+    case "$arg" in
+        --dry-run)            DRY_RUN=1 ;;
+        --network-manager)    NM_MODE=yes ;;
+        --no-network-manager) NM_MODE=no ;;
+        --no-restart)         RESTART=0 ;;
+        -h|--help)            usage; exit 0 ;;
+        *)
+            echo "Unknown option: $arg"
+            usage
+            exit 1
+            ;;
+    esac
+
+done
+
+if [ "$EUID" -ne 0 ] && [ "$DRY_RUN" -eq 0 ]; then
+    echo
+    echo "Run this script with:"
+    echo
+    echo "    sudo $0"
+    echo
+    exit 1
+fi
+
+# ------------------------------------------------------------
+# Determine normal user (same logic as bootstrap_new)
+# ------------------------------------------------------------
+
+REAL_USER="${SUDO_USER:-}"
+
+if [ -z "$REAL_USER" ] || [ "$REAL_USER" = "root" ]; then
+    REAL_USER=$(awk -F: '$3 >= 1000 && $3 < 60000 {print $1; exit}' /etc/passwd)
+fi
+
+if [ -z "$REAL_USER" ]; then
+    echo "ERROR: Could not determine normal user."
+    exit 1
+fi
+
+REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
+REAL_GROUP=$(id -gn "$REAL_USER")
+
+# ------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------
+
+run() {
+    if [ "$DRY_RUN" -eq 1 ]; then
+        echo "    [dry-run] $*"
+    else
+        "$@"
+    fi
+}
+
+write_file() {
+    if [ "$DRY_RUN" -eq 1 ]; then
+        echo "    [dry-run] would write $1:"
+        sed 's/^/        /'
+    else
+        cat > "$1"
+    fi
+}
+
+checksum() {
+    if [ -f "$1" ]; then
+        md5sum "$1" | cut -d' ' -f1
+    else
+        echo "missing"
+    fi
+}
+
+# A physical interface is a device (PCI, USB or platform) with an
+# ethernet type.  bridges, bonds, veth pairs and docker0 have no
+# "device" link and are ignored.
+iface_physical() {
+    [ -e "/sys/class/net/$1/device" ] &&
+        [ "$(cat "/sys/class/net/$1/type" 2>/dev/null)" = "1" ]
+}
+
+# ------------------------------------------------------------
+# Detect hardware
+#
+# Linux names wireless interfaces wl* (wlan0, wlp3s0, wlx...).
+# The first physical wired and the first physical wireless
+# interface are used; additional NICs are rare on these machines.
+# ------------------------------------------------------------
+
+WIRED=""
+WIRELESS=""
+
+for sys in /sys/class/net/*; do
+
+    iface=${sys##*/}
+
+    case "$iface" in
+        lo) continue ;;
+    esac
+
+    iface_physical "$iface" || continue
+
+    case "$iface" in
+        wl*)
+            if [ -z "$WIRELESS" ]; then
+                WIRELESS=$iface
+            fi
+            ;;
+        *)
+            if [ -z "$WIRED" ]; then
+                WIRED=$iface
+            fi
+            ;;
+    esac
+
+done
+
+BATTERY=""
+
+for sys in /sys/class/power_supply/BAT*; do
+
+    if [ -d "$sys" ]; then
+        BATTERY=yes
+        break
+    fi
+
+done
+
+# ------------------------------------------------------------
+# Decide on NetworkManager
+#
+# Wi-Fi is the reason NetworkManager exists for this setup: it
+# manages roaming and it is what nm-applet shows.  Without Wi-Fi
+# (a wired-only desktop) systemd-networkd is left in charge, so
+# the applet does not sit in the tray claiming there are no
+# connections.
+# ------------------------------------------------------------
+
+case "$NM_MODE" in
+
+    yes) WANT_NM=1 ;;
+
+    no)  WANT_NM=0 ;;
+
+    auto)
+        if [ -n "$WIRELESS" ]; then
+            WANT_NM=1
+        else
+            WANT_NM=0
+        fi
+        ;;
+
+esac
+
+echo
+echo "============================================================"
+echo " Machine setup for $REAL_USER"
+echo "============================================================"
+echo
+echo "    Home:               $REAL_HOME"
+echo "    Wired interface:    ${WIRED:-none}"
+echo "    Wireless interface: ${WIRELESS:-none}"
+echo "    Battery:            ${BATTERY:-no}"
+
+if [ "$WANT_NM" -eq 1 ]; then
+    echo "    NetworkManager:     yes"
+else
+    echo "    NetworkManager:     no (systemd-networkd / netplan)"
+fi
+
+echo
+
+# ------------------------------------------------------------
+# i3status
+# ------------------------------------------------------------
+
+STATUS="$REAL_HOME/.i3/i3status.conf"
+I3CONF="$REAL_HOME/.config/i3/config"
+
+OLD_SUM="$(checksum "$STATUS") $(checksum "$I3CONF")"
+
+if [ ! -f "$STATUS" ]; then
+
+    echo "WARNING: $STATUS does not exist, skipping i3status setup."
+
+else
+
+    echo "==> Configuring i3status..."
+
+    if [ -n "$WIRED" ]; then
+
+        run sed -i \
+            "s/^order += \"ethernet [^\"]*\"/order += \"ethernet $WIRED\"/" \
+            "$STATUS"
+
+        run sed -i \
+            "s/^ethernet [^ ]* {/ethernet $WIRED {/" \
+            "$STATUS"
+
+    else
+
+        run sed -i \
+            's/^order += "ethernet /#order += "ethernet /' \
+            "$STATUS"
+
+    fi
+
+    if [ -n "$WIRELESS" ]; then
+
+        run sed -i \
+            "s/^#order += \"wireless [^\"]*\"/order += \"wireless $WIRELESS\"/" \
+            "$STATUS"
+
+        run sed -i '/^#wireless .*{/,/^#}/ s/^#//' "$STATUS"
+
+        run sed -i \
+            "s/^wireless [^ ]* {/wireless $WIRELESS {/" \
+            "$STATUS"
+
+    else
+
+        run sed -i \
+            's/^order += "wireless /#order += "wireless /' \
+            "$STATUS"
+
+        run sed -i '/^wireless .*{/,/^}/ s/^/#/' "$STATUS"
+
+    fi
+
+    if [ -n "$BATTERY" ]; then
+
+        run sed -i \
+            's/^#order += "battery 0"/order += "battery 0"/' \
+            "$STATUS"
+
+        run sed -i '/^#battery 0 {/,/^#}/ s/^#//' "$STATUS"
+
+    else
+
+        run sed -i \
+            's/^order += "battery 0"/#order += "battery 0"/' \
+            "$STATUS"
+
+        run sed -i '/^battery 0 {/,/^}/ s/^/#/' "$STATUS"
+
+    fi
+
+fi
+
+# ------------------------------------------------------------
+# i3: nm-applet and the bar tray
+#
+# The tray only makes sense with nm-applet, and nm-applet only
+# makes sense with NetworkManager.  The bar docks it on the
+# primary output, which ~/.xinitrc marks on the internal panel.
+# ------------------------------------------------------------
+
+if [ ! -f "$I3CONF" ]; then
+
+    echo "WARNING: $I3CONF does not exist, skipping applet setup."
+
+elif [ "$WANT_NM" -eq 1 ]; then
+
+    echo "==> Enabling nm-applet and the bar tray..."
+
+    run sed -i \
+        's/^#exec nm-applet &/exec --no-startup-id nm-applet/' \
+        "$I3CONF"
+
+    run sed -i \
+        's/^#[[:space:]]*tray_output primary/\ttray_output primary/' \
+        "$I3CONF"
+
+else
+
+    echo "==> Disabling nm-applet and the bar tray..."
+
+    run sed -i \
+        's/^exec --no-startup-id nm-applet/#exec nm-applet \&/' \
+        "$I3CONF"
+
+    run sed -i \
+        's/^[[:space:]]*tray_output primary/#\ttray_output primary/' \
+        "$I3CONF"
+
+fi
+
+# sed -i replaces the file, so root owns it afterwards.
+if [ -f "$STATUS" ]; then
+    run chown "$REAL_USER:$REAL_GROUP" "$STATUS"
+fi
+
+if [ -f "$I3CONF" ]; then
+    run chown "$REAL_USER:$REAL_GROUP" "$I3CONF"
+fi
+
+# ------------------------------------------------------------
+# NetworkManager as netplan renderer
+# ------------------------------------------------------------
+
+NM_CONF="/etc/netplan/99-networkmanager.yaml"
+
+if [ "$WANT_NM" -eq 1 ]; then
+
+    if ! dpkg -s network-manager >/dev/null 2>&1; then
+
+        echo "WARNING: network-manager is not installed."
+        echo "         Run ~/.i3/scripts/bootstrap_new first."
+
+    elif [ -f "$NM_CONF" ]; then
+
+        echo "==> NetworkManager is already the netplan renderer."
+
+    else
+
+        echo "==> Making NetworkManager the netplan renderer..."
+
+        printf 'network:\n  renderer: NetworkManager\n' | write_file "$NM_CONF"
+
+        run chmod 600 "$NM_CONF"
+
+        run netplan generate
+        run netplan apply
+
+        run systemctl enable NetworkManager
+
+        echo
+        echo "NOTE: interfaces were re-created.  If you were connected"
+        echo "      over SSH, the session may have dropped."
+
+    fi
+
+elif [ "$NM_MODE" = "no" ] && [ -f "$NM_CONF" ]; then
+
+    echo "==> Removing the NetworkManager netplan drop-in..."
+
+    run rm -f "$NM_CONF"
+    run netplan apply
+
+fi
+
+# ------------------------------------------------------------
+# Restart i3 if the configuration changed
+# ------------------------------------------------------------
+
+NEW_SUM="$(checksum "$STATUS") $(checksum "$I3CONF")"
+
+if [ "$OLD_SUM" != "$NEW_SUM" ]; then
+
+    if [ "$RESTART" -eq 1 ]; then
+
+        if pgrep -u "$REAL_USER" -x i3 >/dev/null 2>&1; then
+
+            echo "==> Restarting i3 to load the new configuration..."
+
+            run sudo -u "$REAL_USER" \
+                DISPLAY="${DISPLAY:-:0}" \
+                XDG_RUNTIME_DIR="/run/user/$(id -u "$REAL_USER")" \
+                i3-msg restart
+
+        else
+
+            echo "i3 is not running; the configuration is used on next login."
+
+        fi
+
+    else
+
+        echo "Configuration changed.  Restart i3 to apply it:"
+        echo
+        echo "    i3-msg restart"
+
+    fi
+
+fi
+
+echo
+echo "============================================================"
+echo " Done."
+echo "============================================================"
+echo

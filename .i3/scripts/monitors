@@ -1,0 +1,62 @@
+#!/bin/sh
+
+# Apply the monitor layout when outputs are connected or
+# disconnected.
+#
+# i3 already listens to the X RandR events and re-broadcasts them
+# as its "output" IPC event, so no udev rules and no extra
+# privileges are needed.  The event only says that something
+# changed, so the connected outputs are read from xrandr and
+# compared with the previous set.  That also keeps i3's duplicate
+# events, and the screen changes caused by this script itself,
+# from re-applying the layout in a loop.
+#
+# Started from ~/.config/i3/config with:
+#
+#     exec_always --no-startup-id ~/.i3/scripts/monitors
+#
+# The i3-msg subscription ends when i3 exits or restarts; the
+# exec_always line starts a new instance, and the lock below keeps
+# a dying instance and a new one from overlapping.
+
+LAYOUT_ONE="$HOME/.i3/scripts/laptop"
+LAYOUT_MANY="$HOME/.i3/scripts/dblmon"
+
+signature() {
+    xrandr -q | awk '/ connected/{print $1}' | sort | tr '\n' ' '
+}
+
+apply_layout() {
+    case "$(signature | wc -w)" in
+        0) ;;
+        1) "$LAYOUT_ONE" ;;
+        *) "$LAYOUT_MANY" ;;
+    esac
+}
+
+# One instance per session.
+LOCK="${XDG_RUNTIME_DIR:-/tmp}/i3-monitors.lock"
+
+if command -v flock >/dev/null 2>&1; then
+    exec 9>"$LOCK"
+    flock -w 3 9 || exit 0
+fi
+
+last=$(signature)
+
+apply_layout
+
+i3-msg -t subscribe -m '["output"]' | while read -r event; do
+
+    # Give the driver a moment to finish the mode change: one
+    # hotplug produces more than one event.
+    sleep 1
+
+    now=$(signature)
+
+    if [ "$now" != "$last" ]; then
+        last=$now
+        apply_layout
+    fi
+
+done
