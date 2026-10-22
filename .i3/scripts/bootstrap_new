@@ -34,6 +34,7 @@ if [ -z "$REAL_USER" ]; then
 fi
 
 REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
+REAL_GROUP=$(id -gn "$REAL_USER")
 
 echo
 echo "============================================================"
@@ -76,14 +77,62 @@ apt-get install -y --no-install-recommends \
     i3lock
 
 # ------------------------------------------------------------
-# urxvt
+# urxvt + urxvtd
+#
+# rxvt-unicode provides:
+#   /usr/bin/urxvt     terminal
+#   /usr/bin/urxvtc    client (spawns urxvt via the daemon)
+#   /usr/bin/urxvtd    daemon
+#   /usr/lib/<triplet>/urxvt/perl/   bundled perl extensions
+#
+# The daemon keeps a control socket at:
+#   $HOME/.urxvt/urxvtd-<nodename>
+#
+# It is started from ~/.xinitrc with:
+#   urxvtd -q -o -f
+#     -q  quiet
+#     -o  open a connection to $DISPLAY and keep it open
+#     -f  fork into the background after binding the socket
+#
+# Terminal resources (font, transparency, colors) live in
+# ~/.Xdefaults and are loaded into the X server by "xrdb" from
+# ~/.xinitrc.  Without that, urxvt falls back to its built-in
+# defaults and ~/.Xdefaults is silently ignored.
 # ------------------------------------------------------------
 
 echo
-echo "==> Installing urxvt..."
+echo "==> Installing urxvt + urxvtd..."
 
 apt-get install -y --no-install-recommends \
     rxvt-unicode
+
+# ------------------------------------------------------------
+# urxvtd runtime directory
+#
+# urxvtd creates $HOME/.urxvt itself, but it must be owned by
+# the real user and not readable by anyone else (it holds a
+# control socket).
+# ------------------------------------------------------------
+
+echo
+echo "==> Preparing urxvtd runtime directory..."
+
+install -d -m 700 -o "$REAL_USER" -g "$REAL_GROUP" "$REAL_HOME/.urxvt"
+
+# The perl extension library can be overridden per user.  The
+# system one shipped with rxvt-unicode is used by default, so
+# only create the directory if a custom one is wanted.
+#
+#   sudo -u "$REAL_USER" mkdir -p "$REAL_HOME/.urxvt/perl"
+#
+# Note: rxvt-unicode 9.31 (Ubuntu 26.04) no longer ships the
+# "clipboard" and "keyboard-select" perl extensions.  Use
+# "clipboard-osc", "selection" or "selection-to-clipboard"
+# instead.  ~/.Xdefaults is updated accordingly.
+
+if ! command -v urxvtd >/dev/null 2>&1; then
+    echo "WARNING: urxvtd not found, urxvt daemon will not start."
+fi
 
 # ------------------------------------------------------------
 # Utilities
@@ -101,7 +150,56 @@ apt-get install -y --no-install-recommends \
     feh \
     curl \
     wget \
-    ca-certificates
+    ca-certificates \
+    tmux \
+    htop
+
+# ------------------------------------------------------------
+# X utilities
+#
+# x11-xserver-utils -> xrdb, xset, xrandr
+# x11-xkb-utils     -> setxkbmap
+#
+# ~/.xinitrc calls "xrdb" to load ~/.Xdefaults and "xset" to set
+# the key repeat rate.  ~/.i3/scripts/{i3stat,laptop,dblmon}
+# call "xrandr".  i3 itself calls "setxkbmap" for layout switching.
+# ------------------------------------------------------------
+
+echo
+echo "==> Installing X utilities..."
+
+apt-get install -y --no-install-recommends \
+    x11-xserver-utils \
+    x11-xkb-utils
+
+# ------------------------------------------------------------
+# dmenu (program launcher, bound to Super+d in i3)
+#
+# NOTE: Ubuntu 26.04 dropped the standalone "dmenu" package.
+# It is now shipped by "suckless-tools", which Provides: dmenu
+# and installs /usr/bin/dmenu and /usr/bin/dmenu_run.
+# ------------------------------------------------------------
+
+echo
+echo "==> Installing dmenu (suckless-tools)..."
+
+apt-get install -y --no-install-recommends \
+    suckless-tools
+
+# ------------------------------------------------------------
+# Build toolchain
+#
+# YouCompleteMe (declared in ~/.vimrc) is a C++ extension and
+# cannot be compiled without a toolchain.
+# ------------------------------------------------------------
+
+echo
+echo "==> Installing build toolchain (for YouCompleteMe)..."
+
+apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    pkg-config
 
 # ------------------------------------------------------------
 # NetworkManager
@@ -148,12 +246,15 @@ rm -f "$CHROME_DEB"
 
 # ------------------------------------------------------------
 # Vundle
+#
+# ~/.vim/bundle must be owned by the real user, otherwise the
+# plugins that Vundle installs into it cannot be written.
 # ------------------------------------------------------------
 
 echo
 echo "==> Installing Vundle..."
 
-mkdir -p "$REAL_HOME/.vim/bundle"
+install -d -m 755 -o "$REAL_USER" -g "$REAL_GROUP" "$REAL_HOME/.vim/bundle"
 
 if [ ! -d "$REAL_HOME/.vim/bundle/Vundle.vim" ]; then
 
@@ -167,6 +268,17 @@ else
 
 fi
 
+# YouCompleteMe has to be compiled against the local toolchain.
+# It is pulled in by ":PluginInstall" from inside vim.
+
+if [ ! -d "$REAL_HOME/.vim/bundle/YouCompleteMe" ]; then
+
+    echo
+    echo "NOTE: YouCompleteMe is not installed yet."
+    echo "      Run ':PluginInstall' inside vim to fetch and build it."
+
+fi
+
 # ------------------------------------------------------------
 # Enable graphical boot
 # ------------------------------------------------------------
@@ -175,6 +287,31 @@ echo
 echo "==> Setting graphical target..."
 
 systemctl set-default graphical.target
+
+# ------------------------------------------------------------
+# Verification
+# ------------------------------------------------------------
+
+echo
+echo "==> Verifying installation..."
+
+MISSING=""
+
+for cmd in urxvt urxvtc urxvtd xrdb xset xrandr setxkbmap dmenu dmenu_run \
+           i3 i3status i3lock xautolock feh xsel xclip vim git; do
+
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        MISSING="$MISSING $cmd"
+    fi
+
+done
+
+if [ -n "$MISSING" ]; then
+    echo
+    echo "WARNING: missing commands:$MISSING"
+else
+    echo "All required commands are present."
+fi
 
 # ------------------------------------------------------------
 # DO NOT TOUCH USER CONFIGURATION
@@ -191,7 +328,7 @@ echo "No files were created or modified in:"
 echo
 echo "    $REAL_HOME/.i3"
 echo "    $REAL_HOME/.config/i3"
-echo "    $REAL_HOME/.Xresources"
+echo "    $REAL_HOME/.Xdefaults"
 echo "    $REAL_HOME/.xinitrc"
 echo
 echo "============================================================"
@@ -202,12 +339,18 @@ echo "    Xorg"
 echo "    i3"
 echo "    i3status"
 echo "    i3lock"
-echo "    urxvt"
+echo "    urxvt / urxvtc / urxvtd"
+echo "    dmenu (suckless-tools)"
 echo "    Vim"
 echo "    Git"
 echo "    xsel / xclip"
 echo "    xautolock"
 echo "    feh"
+echo "    xrdb / xset / xrandr (x11-xserver-utils)"
+echo "    setxkbmap (x11-xkb-utils)"
+echo "    build-essential / cmake"
+echo "    tmux"
+echo "    htop"
 echo "    NetworkManager"
 echo "    nm-applet"
 echo "    LightDM"
