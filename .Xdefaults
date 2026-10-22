@@ -78,3 +78,10 @@ URxvt*perl-ext-common: default,matcher,clipboard-osc,selection-to-clipboard
 URxvt*urlLauncher: x-www-browser
 URxvt*matcher.button: 1
 URxvt*colorUL: #86a2be
+
+! Deliberately larger than any screen: rxvt-unicode sizes its initial
+! screen from this geometry and keeps the cursor's distance from the
+! bottom when the window grows. i3 always shrinks this window to the
+! container, so the shell prompt stays in the top-left corner instead of
+! landing (window rows - 24) lines down.
+URxvt*geometry: 400x200
