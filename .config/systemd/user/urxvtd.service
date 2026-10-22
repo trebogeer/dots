@@ -1,0 +1,22 @@
+[Unit]
+Description=urxvt terminal daemon
+Documentation=man:urxvtd(1)
+
+[Service]
+Type=simple
+# urxvtd keeps its control socket in $HOME/.urxvt.  The directory
+# has to exist and be private, and a socket left over from a
+# previous session would make the daemon fail to bind.
+ExecStartPre=/usr/bin/mkdir -p %h/.urxvt
+ExecStartPre=/usr/bin/chmod 700 %h/.urxvt
+ExecStartPre=/bin/sh -c 'rm -f %h/.urxvt/urxvtd-*'
+# -q  quiet
+# -o  open a connection to $DISPLAY and keep it open
+# Without -f the daemon stays in the foreground, which is what
+# Type=simple expects.
+ExecStart=/usr/bin/urxvtd -q -o
+Restart=on-failure
+RestartSec=1
+
+[Install]
+WantedBy=default.target

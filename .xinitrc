@@ -3,6 +3,17 @@
 # X session startup, sourced by xinit(1)/LightDM.
 
 # ------------------------------------------------------------
+# SSH agent
+#
+# ssh-agent.socket (systemd user unit) provides the socket and
+# sets SSH_AUTH_SOCK in the user manager environment.  Export
+# it here so the X session inherits it.  The key is added to the
+# agent by the agent service itself.
+# ------------------------------------------------------------
+
+export SSH_AUTH_SOCK="/run/user/$(id -u)/openssh_agent"
+
+# ------------------------------------------------------------
 # X resources
 #
 # ~/.Xdefaults holds the urxvt resources (font, transparency,
@@ -36,22 +47,15 @@ xset r rate 260
 # The daemon owns the control socket at
 # $HOME/.urxvt/urxvtd-<nodename> and spawns urxvt clients.
 #
-#   -q  quiet
-#   -o  open a connection to $DISPLAY and keep it open
-#   -f  fork into the background once the socket is bound
-#
-# A stale socket left over from a previous session makes urxvtd
-# fail to bind, so it is removed first when no daemon is
-# listening on it any more.
+# It is started by the systemd user unit
+# ~/.config/systemd/user/urxvtd.service, NOT from here.  Both
+# starting it would leave two daemons fighting over the same
+# socket.  The unit creates $HOME/.urxvt and clears a stale
+# socket before binding.
 # ------------------------------------------------------------
 
 mkdir -p "$HOME/.urxvt"
 chmod 700 "$HOME/.urxvt"
-
-if ! pgrep -u "$(id -u)" -x urxvtd >/dev/null 2>&1; then
-    rm -f "$HOME/.urxvt/urxvtd-"*
-    urxvtd -q -o -f
-fi
 
 # ------------------------------------------------------------
 # Screen lock

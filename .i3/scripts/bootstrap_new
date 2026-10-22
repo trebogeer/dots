@@ -135,6 +135,65 @@ if ! command -v urxvtd >/dev/null 2>&1; then
 fi
 
 # ------------------------------------------------------------
+# urxvtd systemd user unit
+#
+# The daemon is started by a systemd user unit, not by
+# ~/.xinitrc.  Only one of the two may start it, otherwise two
+# daemons fight over the same control socket.
+#
+# The unit comes from the dotfiles repo.  If it is not there
+# yet, a minimal one is written so urxvt works right away.
+# ------------------------------------------------------------
+
+echo
+echo "==> Installing urxvtd systemd user unit..."
+
+URXVTD_UNIT="$REAL_HOME/.config/systemd/user/urxvtd.service"
+
+install -d -m 755 -o "$REAL_USER" -g "$REAL_GROUP" \
+    "$REAL_HOME/.config/systemd/user"
+
+if [ -f "$REAL_HOME/dots/.config/systemd/user/urxvtd.service" ]; then
+
+    install -m 644 -o "$REAL_USER" -g "$REAL_GROUP" \
+        "$REAL_HOME/dots/.config/systemd/user/urxvtd.service" \
+        "$URXVTD_UNIT"
+
+else
+
+    cat > "$URXVTD_UNIT" << 'UNIT'
+[Unit]
+Description=urxvt terminal daemon
+Documentation=man:urxvtd(1)
+
+[Service]
+Type=simple
+ExecStartPre=/usr/bin/mkdir -p %h/.urxvt
+ExecStartPre=/usr/bin/chmod 700 %h/.urxvt
+ExecStartPre=/bin/sh -c 'rm -f %h/.urxvt/urxvtd-*'
+ExecStart=/usr/bin/urxvtd -q -o
+Restart=on-failure
+RestartSec=1
+
+[Install]
+WantedBy=default.target
+UNIT
+
+    chown "$REAL_USER:$REAL_GROUP" "$URXVTD_UNIT"
+
+fi
+
+if [ -d "/run/user/$(id -u "$REAL_USER")" ]; then
+
+    sudo -u "$REAL_USER" XDG_RUNTIME_DIR="/run/user/$(id -u "$REAL_USER")" \
+        systemctl --user daemon-reload
+
+    sudo -u "$REAL_USER" XDG_RUNTIME_DIR="/run/user/$(id -u "$REAL_USER")" \
+        systemctl --user enable urxvtd.service
+
+fi
+
+# ------------------------------------------------------------
 # Utilities
 # ------------------------------------------------------------
 
